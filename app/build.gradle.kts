@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "com.joaquindev.triptrace"
+    namespace = "com.techvibedev.triptrace"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.joaquindev.triptrace"
+        applicationId = "com.techvibedev.triptrace"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
