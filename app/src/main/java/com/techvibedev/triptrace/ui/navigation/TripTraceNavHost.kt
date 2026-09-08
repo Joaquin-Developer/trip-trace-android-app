@@ -10,7 +10,6 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -40,18 +39,11 @@ fun TripTraceNavHost(navController: NavHostController = rememberNavController())
     val authRepository = remember {
         AuthRepository(RetrofitClient.authApiService, TokenDataStore(context.applicationContext))
     }
+    // null while DataStore hasn't emitted yet (checking for a saved session).
     val isLoggedIn by authRepository.isLoggedIn.collectAsState(initial = null)
 
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
-
-    LaunchedEffect(isLoggedIn) {
-        if (isLoggedIn == true && currentRoute == Routes.LOGIN) {
-            navController.navigate(Routes.TRIPS) {
-                popUpTo(Routes.LOGIN) { inclusive = true }
-            }
-        }
-    }
 
     Scaffold(
         bottomBar = {
@@ -88,9 +80,14 @@ fun TripTraceNavHost(navController: NavHostController = rememberNavController())
             return@Scaffold
         }
 
+        // isLoggedIn is resolved (true/false) by the time NavHost is first
+        // composed, so the start destination is decided correctly up front
+        // instead of composing at Login and reacting afterwards — that
+        // reactive approach raced with NavHost's own initialization and
+        // never actually redirected a returning, already-logged-in user.
         NavHost(
             navController = navController,
-            startDestination = Routes.LOGIN,
+            startDestination = if (isLoggedIn == true) Routes.TRIPS else Routes.LOGIN,
             modifier = Modifier.padding(innerPadding),
         ) {
             composable(Routes.LOGIN) {
