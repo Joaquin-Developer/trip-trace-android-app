@@ -7,6 +7,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+- Fixed a missing `weight` import in `TripsScreen.kt` and `ActiveTripScreen.kt` that broke the build. ([#17](https://github.com/TechVibe-Dev/trip-trace-android-app/pull/17))
 - Implemented the Active trip screen. ([#16](https://github.com/TechVibe-Dev/trip-trace-android-app/pull/16))
 - Implemented the History screen with expandable trip cards. ([#14](https://github.com/TechVibe-Dev/trip-trace-android-app/pull/14))
 - Implemented the Trips screen (planned trips ready to start), and added placeholders + routes for Create trip and Active trip. ([#13](https://github.com/TechVibe-Dev/trip-trace-android-app/pull/13))
