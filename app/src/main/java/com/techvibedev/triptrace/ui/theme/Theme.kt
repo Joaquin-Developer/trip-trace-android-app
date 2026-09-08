@@ -1,4 +1,4 @@
-package com.joaquindev.triptrace.ui.theme
+package com.techvibedev.triptrace.ui.theme
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
