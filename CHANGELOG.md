@@ -7,6 +7,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+- Implemented the History screen with expandable trip cards. ([#14](https://github.com/TechVibe-Dev/trip-trace-android-app/pull/14))
 - Implemented the Trips screen (planned trips ready to start), and added placeholders + routes for Create trip and Active trip. ([#13](https://github.com/TechVibe-Dev/trip-trace-android-app/pull/13))
 - Renamed package from `com.joaquindev.triptrace` to `com.techvibedev.triptrace`. ([#10](https://github.com/TechVibe-Dev/trip-trace-android-app/pull/10))
 - Added navigation skeleton (NavHost, bottom nav bar) and the Login screen. ([#10](https://github.com/TechVibe-Dev/trip-trace-android-app/pull/10))
