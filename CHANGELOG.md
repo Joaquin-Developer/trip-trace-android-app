@@ -11,5 +11,5 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- Initial Android app skeleton (Kotlin + Jetpack Compose). ([#1](https://github.com/TechVibe-Dev/trip-trace-android-app/pull/1))
+- Initial Android app skeleton (Kotlin + Jetpack Compose).
 - GitHub Actions workflow to build and upload a debug APK. ([#1](https://github.com/TechVibe-Dev/trip-trace-android-app/pull/1))
