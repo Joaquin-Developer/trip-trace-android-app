@@ -7,4 +7,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-- Added GitHub Actions workflow to build a debug APK. ([#1](https://github.com/Joaquin-Developer/trip-trace-android-app/pull/1))
+## [0.1.0] - 8 Sep 2026
+
+### Added
+
+- Initial Android app skeleton (Kotlin + Jetpack Compose). ([#1](https://github.com/TechVibe-Dev/trip-trace-android-app/pull/1))
+- GitHub Actions workflow to build and upload a debug APK. ([#1](https://github.com/TechVibe-Dev/trip-trace-android-app/pull/1))
