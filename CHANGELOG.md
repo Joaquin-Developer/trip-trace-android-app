@@ -6,3 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.1.0] - 8 Sep 2026
+
+### Added
+
+- Initial Android app skeleton (Kotlin + Jetpack Compose).
+- GitHub Actions workflow to build and upload a debug APK. ([#1](https://github.com/TechVibe-Dev/trip-trace-android-app/pull/1))
