@@ -7,6 +7,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+- Added Retrofit networking layer for auth endpoints (register/login/me). ([#20](https://github.com/TechVibe-Dev/trip-trace-android-app/pull/20))
 - Implemented the Create trip screen. ([#15](https://github.com/TechVibe-Dev/trip-trace-android-app/pull/15))
 - Automated backport PR creation (`main` → `develop`) after a release/hotfix merge. ([#19](https://github.com/TechVibe-Dev/trip-trace-android-app/pull/19))
 - Build workflow now comments the APK download link on the PR after each build. ([#18](https://github.com/TechVibe-Dev/trip-trace-android-app/pull/18))
