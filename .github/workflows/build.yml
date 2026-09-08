@@ -17,6 +17,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -44,8 +48,20 @@ jobs:
         run: gradle assembleDebug --stacktrace
 
       - name: Upload APK artifact
+        id: upload-apk
         uses: actions/upload-artifact@v4
         with:
           name: app-debug-${{ github.sha }}
           path: app/build/outputs/apk/debug/*.apk
           retention-days: 5
+
+      - name: Comment APK link on PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER=$(gh pr list --head "${{ github.ref_name }}" --json number --jq '.[0].number')
+          if [ -n "$PR_NUMBER" ]; then
+            gh pr comment "$PR_NUMBER" \
+              --body "APK de este commit ($GITHUB_SHA): ${{ steps.upload-apk.outputs.artifact-url }}" \
+              --edit-last --create-if-none
+          fi
