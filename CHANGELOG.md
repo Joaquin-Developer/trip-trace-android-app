@@ -7,6 +7,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+- Applied dark navigation theme palette and stat-forward typography. ([#9](https://github.com/TechVibe-Dev/trip-trace-android-app/pull/9))
+
 ## [0.1.0] - 8 Sep 2026
 
 ### Added
