@@ -2,14 +2,21 @@ name: Android Build
 
 on:
   push:
-    branches: [main, develop]
+    branches:
+      - main
+      - 'feature/**'
+      - 'hotfix/**'
+      - 'release/**'
   pull_request:
-    branches: [main, develop]
+    branches:
+      - develop
+      - main
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || (!startsWith(github.head_ref, 'feature/') && !startsWith(github.head_ref, 'hotfix/') && !startsWith(github.head_ref, 'release/') && !startsWith(github.head_ref, 'doc/'))
 
     steps:
       - name: Checkout repository
