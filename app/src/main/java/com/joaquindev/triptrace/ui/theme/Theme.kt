@@ -1,44 +1,50 @@
 package com.joaquindev.triptrace.ui.theme
 
-import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80,
-)
+// TripTrace always renders in dark mode — it's the app's fixed identity
+// (night navigation aesthetic), not something that should follow the
+// system theme or the device's dynamic (Material You) palette.
+private val TripTraceDarkColorScheme = darkColorScheme(
+    primary = TripTraceBlue,
+    onPrimary = TripTraceTextPrimary,
+    primaryContainer = TripTraceBlueContainer,
+    onPrimaryContainer = TripTraceTextPrimary,
 
-private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40,
+    secondary = TripTraceAmber,
+    onSecondary = TripTraceBackground,
+    secondaryContainer = TripTraceAmberContainer,
+    onSecondaryContainer = TripTraceTextPrimary,
+
+    tertiary = TripTraceTeal,
+    onTertiary = TripTraceTextPrimary,
+    tertiaryContainer = TripTraceTealContainer,
+    onTertiaryContainer = TripTraceTextPrimary,
+
+    background = TripTraceBackground,
+    onBackground = TripTraceTextPrimary,
+
+    surface = TripTraceSurface,
+    onSurface = TripTraceTextPrimary,
+    surfaceVariant = TripTraceSurfaceVariant,
+    onSurfaceVariant = TripTraceTextSecondary,
+
+    outline = TripTraceOutline,
+
+    error = TripTraceError,
+    onError = TripTraceTextPrimary,
+    errorContainer = TripTraceErrorContainer,
+    onErrorContainer = TripTraceTextPrimary,
 )
 
 @Composable
 fun TripTraceTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
     content: @Composable () -> Unit,
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
-    }
-
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = TripTraceDarkColorScheme,
         typography = Typography,
         content = content,
     )
