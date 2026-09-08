@@ -8,7 +8,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 
-// Placeholder until the real screen is built (see issue android#6).
+// Placeholder until the real "planned trips, ready to start" screen is built.
+// (No dedicated issue yet — it came up after the original screen list was filed.)
 @Composable
 fun TripsScreen() {
     Box(
