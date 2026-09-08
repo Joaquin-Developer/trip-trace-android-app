@@ -28,9 +28,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.autofill.ContentType
-import androidx.compose.ui.semantics.contentType
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -38,6 +35,11 @@ import androidx.compose.ui.unit.dp
 import com.techvibedev.triptrace.data.repository.AuthRepository
 import kotlinx.coroutines.launch
 
+// Note: explicit ContentType autofill hints (ContentType.EmailAddress /
+// ContentType.Password) need Compose BOM 2025.04.01+ (Compose 1.8) — ours is
+// 2024.11.00, where that API is still internal. Using keyboardType alone
+// still nudges autofill/password managers, just less reliably across
+// providers than the newer API. Revisit once the BOM gets bumped.
 @Composable
 fun LoginScreen(authRepository: AuthRepository, onLoginSuccess: () -> Unit) {
     var email by remember { mutableStateOf("") }
@@ -83,9 +85,7 @@ fun LoginScreen(authRepository: AuthRepository, onLoginSuccess: () -> Unit) {
             singleLine = true,
             enabled = !isLoading,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            modifier = Modifier
-                .fillMaxWidth()
-                .semantics { contentType = ContentType.EmailAddress },
+            modifier = Modifier.fillMaxWidth(),
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -98,9 +98,7 @@ fun LoginScreen(authRepository: AuthRepository, onLoginSuccess: () -> Unit) {
             enabled = !isLoading,
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            modifier = Modifier
-                .fillMaxWidth()
-                .semantics { contentType = ContentType.Password },
+            modifier = Modifier.fillMaxWidth(),
         )
 
         errorMessage?.let { message ->
