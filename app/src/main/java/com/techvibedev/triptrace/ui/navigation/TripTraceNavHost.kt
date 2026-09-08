@@ -1,6 +1,10 @@
 package com.techvibedev.triptrace.ui.navigation
 
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -11,6 +15,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.techvibedev.triptrace.ui.components.TripTraceBottomNavBar
+import com.techvibedev.triptrace.ui.screens.activetrip.ActiveTripScreen
+import com.techvibedev.triptrace.ui.screens.createtrip.CreateTripScreen
 import com.techvibedev.triptrace.ui.screens.history.HistoryScreen
 import com.techvibedev.triptrace.ui.screens.login.LoginScreen
 import com.techvibedev.triptrace.ui.screens.trips.TripsScreen
@@ -37,6 +43,13 @@ fun TripTraceNavHost(navController: NavHostController = rememberNavController())
                 )
             }
         },
+        floatingActionButton = {
+            if (currentRoute == Routes.TRIPS) {
+                FloatingActionButton(onClick = { navController.navigate(Routes.CREATE_TRIP) }) {
+                    Icon(imageVector = Icons.Filled.Add, contentDescription = "Nuevo viaje")
+                }
+            }
+        },
     ) { innerPadding ->
         NavHost(
             navController = navController,
@@ -53,10 +66,21 @@ fun TripTraceNavHost(navController: NavHostController = rememberNavController())
                 )
             }
             composable(Routes.TRIPS) {
-                TripsScreen()
+                TripsScreen(
+                    onStartTrip = { tripId ->
+                        navController.navigate("${Routes.ACTIVE_TRIP}/$tripId")
+                    },
+                )
             }
             composable(Routes.HISTORY) {
                 HistoryScreen()
+            }
+            composable(Routes.CREATE_TRIP) {
+                CreateTripScreen()
+            }
+            composable("${Routes.ACTIVE_TRIP}/{tripId}") { backStackEntry ->
+                val tripId = backStackEntry.arguments?.getString("tripId") ?: ""
+                ActiveTripScreen(tripId = tripId)
             }
         }
     }
