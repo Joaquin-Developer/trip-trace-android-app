@@ -17,3 +17,14 @@ Trips are stored locally first (Room) and synced to trip-trace-api once a trip e
 
 Open this project in Android Studio. Gradle sync will download the wrapper and dependencies
 automatically.
+
+## Branching model
+
+- `main`: released code only. Updated via PR from `develop`.
+- `develop`: integration branch. All feature branches merge here.
+- `feature/{name}`: one branch per unit of work, branched off `develop`.
+
+## Releases
+
+| Version | PR | Summary |
+| --- | --- | --- |
