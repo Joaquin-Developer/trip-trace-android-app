@@ -1,5 +1,9 @@
 package com.techvibedev.triptrace.ui.screens.createtrip
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -11,9 +15,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
@@ -28,6 +32,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -36,19 +41,23 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import com.techvibedev.triptrace.data.model.TripCreateRequest
 import com.techvibedev.triptrace.data.repository.TripRepository
-import kotlinx.coroutines.launch
+import com.techvibedev.triptrace.location.LocationProvider
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeParseException
+import kotlinx.coroutines.launch
 
-// Origin/destination coordinates are placeholders for now (Montevideo) — real
-// GPS + geocoding aren't wired up yet, see issue android#23. This lets us
-// validate the create-trip API flow end to end without blocking on that.
+// Destination (and origin, when the user opts out of current location) still
+// use placeholder coordinates — geocoding a typed address isn't wired up
+// yet, see issue android#23. Origin now uses real GPS when "Ubicacion
+// actual" is selected (this PR).
 private const val PLACEHOLDER_LAT = -34.9011
 private const val PLACEHOLDER_LNG = -56.1645
 
@@ -58,7 +67,14 @@ fun CreateTripScreen(
     onTripSaved: () -> Unit,
     onTripStarted: (String) -> Unit,
 ) {
+    val context = LocalContext.current
+    val locationProvider = remember { LocationProvider(context.applicationContext) }
+
     var useCurrentLocation by remember { mutableStateOf(true) }
+    var currentLat by remember { mutableStateOf<Double?>(null) }
+    var currentLng by remember { mutableStateOf<Double?>(null) }
+    var isLoadingLocation by remember { mutableStateOf(false) }
+    var locationError by remember { mutableStateOf<String?>(null) }
     var destination by remember { mutableStateOf("") }
     val stops = remember { mutableStateListOf<String>() }
     var newStop by remember { mutableStateOf("") }
@@ -68,18 +84,69 @@ fun CreateTripScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
+    suspend fun fetchCurrentLocation() {
+        isLoadingLocation = true
+        locationError = null
+        val result = locationProvider.getCurrentLocation()
+        isLoadingLocation = false
+        result.fold(
+            onSuccess = { (lat, lng) ->
+                currentLat = lat
+                currentLng = lng
+            },
+            onFailure = {
+                locationError = "No se pudo obtener tu ubicacion"
+            },
+        )
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (granted) {
+            scope.launch { fetchCurrentLocation() }
+        } else {
+            locationError = "Se necesita permiso de ubicacion"
+        }
+    }
+
+    fun requestCurrentLocation() {
+        val hasPermission = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION,
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (hasPermission) {
+            scope.launch { fetchCurrentLocation() }
+        } else {
+            permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        if (useCurrentLocation) {
+            requestCurrentLocation()
+        }
+    }
+
     fun save(startNow: Boolean) {
         if (destination.isBlank()) {
             errorMessage = "Ingresa un destino"
             return
         }
+        if (useCurrentLocation && (currentLat == null || currentLng == null)) {
+            errorMessage = "Esperando tu ubicacion, intenta de nuevo en un momento"
+            return
+        }
         errorMessage = null
         isSaving = true
         scope.launch {
+            val originLat = if (useCurrentLocation) currentLat!! else PLACEHOLDER_LAT
+            val originLng = if (useCurrentLocation) currentLng!! else PLACEHOLDER_LNG
             val request = TripCreateRequest(
                 originName = if (useCurrentLocation) "Ubicacion actual" else "Origen",
-                originLat = PLACEHOLDER_LAT,
-                originLng = PLACEHOLDER_LNG,
+                originLat = originLat,
+                originLng = originLng,
                 destinationName = destination,
                 destinationLat = PLACEHOLDER_LAT,
                 destinationLng = PLACEHOLDER_LNG,
@@ -126,7 +193,14 @@ fun CreateTripScreen(
 
         OriginField(
             useCurrentLocation = useCurrentLocation,
-            onChangeClick = { useCurrentLocation = !useCurrentLocation },
+            isLoadingLocation = isLoadingLocation,
+            locationError = locationError,
+            onChangeClick = {
+                useCurrentLocation = !useCurrentLocation
+                if (useCurrentLocation) {
+                    requestCurrentLocation()
+                }
+            },
         )
 
         Spacer(modifier = Modifier.height(10.dp))
@@ -234,30 +308,49 @@ fun CreateTripScreen(
 }
 
 @Composable
-private fun OriginField(useCurrentLocation: Boolean, onChangeClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(10.dp))
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (useCurrentLocation) {
-            Icon(
-                imageVector = Icons.Filled.MyLocation,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(18.dp),
+private fun OriginField(
+    useCurrentLocation: Boolean,
+    isLoadingLocation: Boolean,
+    locationError: String?,
+    onChangeClick: () -> Unit,
+) {
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(10.dp))
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (useCurrentLocation) {
+                Icon(
+                    imageVector = Icons.Filled.MyLocation,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+            }
+            Text(
+                text = if (useCurrentLocation) "Ubicacion actual" else "Origen",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f),
             )
-            Spacer(modifier = Modifier.width(8.dp))
+            if (useCurrentLocation && isLoadingLocation) {
+                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                Spacer(modifier = Modifier.width(8.dp))
+            }
+            TextButton(onClick = onChangeClick) {
+                Text(if (useCurrentLocation) "Cambiar" else "Usar ubicacion actual")
+            }
         }
-        Text(
-            text = if (useCurrentLocation) "Ubicacion actual" else "Origen",
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.weight(1f),
-        )
-        TextButton(onClick = onChangeClick) {
-            Text(if (useCurrentLocation) "Cambiar" else "Usar ubicacion actual")
+        if (useCurrentLocation && locationError != null) {
+            Text(
+                text = locationError,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(top = 4.dp, start = 4.dp),
+            )
         }
     }
 }
