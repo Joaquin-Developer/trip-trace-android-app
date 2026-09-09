@@ -1,5 +1,9 @@
 package com.techvibedev.triptrace.ui.screens.activetrip
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,13 +19,26 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import com.techvibedev.triptrace.data.repository.TripRepository
+import com.techvibedev.triptrace.service.TripTrackingService
+import kotlinx.coroutines.launch
 
 data class TripStop(
     val label: String,
@@ -29,15 +46,62 @@ data class TripStop(
     val reached: Boolean,
 )
 
-// Mock data for now, ignoring tripId — will be replaced once this screen
-// reads live GPS points and the recalculated ETA from the API (api#7).
+// Mock data for now — will be replaced once this screen reads live GPS
+// points and the recalculated ETA from the API (api#7). The tracking itself
+// (foreground service writing points to Room) is real as of this PR.
 private val mockStops = listOf(
     TripStop(label = "Parada: Peaje Ruta 8", timeLabel = "14:10", reached = true),
     TripStop(label = "Destino: Oficina", timeLabel = "14:47", reached = false),
 )
 
 @Composable
-fun ActiveTripScreen(tripId: String) {
+fun ActiveTripScreen(
+    tripId: String,
+    tripRepository: TripRepository,
+    onTripEnded: () -> Unit,
+) {
+    val context = LocalContext.current
+    var isEnding by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (granted) {
+            TripTrackingService.start(context, tripId)
+        } else {
+            errorMessage = "Se necesita permiso de ubicacion para grabar el viaje"
+        }
+    }
+
+    LaunchedEffect(tripId) {
+        val hasPermission = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION,
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (hasPermission) {
+            TripTrackingService.start(context, tripId)
+        } else {
+            permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+    }
+
+    fun endTrip() {
+        isEnding = true
+        errorMessage = null
+        scope.launch {
+            val result = tripRepository.endTrip(tripId)
+            TripTrackingService.stop(context)
+            isEnding = false
+            result.fold(
+                onSuccess = { onTripEnded() },
+                onFailure = { errorMessage = "No se pudo finalizar el viaje." },
+            )
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -101,6 +165,33 @@ fun ActiveTripScreen(tripId: String) {
                 }
             }
         }
+
+        errorMessage?.let { message ->
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(
+            onClick = { endTrip() },
+            enabled = !isEnding,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            if (isEnding) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    strokeWidth = 2.dp,
+                )
+            } else {
+                Text("Finalizar viaje")
+            }
+        }
     }
 }
 
@@ -153,8 +244,7 @@ private fun StopRow(stop: TripStop) {
 }
 
 // Simplified placeholder for the real live map, which needs a maps SDK wired
-// up to the foreground-service location updates (tracking service not yet
-// scheduled as an issue).
+// up to the recorded GPS points.
 @Composable
 private fun RouteMapPlaceholder() {
     Box(
