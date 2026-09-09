@@ -1,6 +1,7 @@
 package com.techvibedev.triptrace.ui.screens.trips
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,82 +18,118 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-
-data class PlannedTrip(
-    val id: String,
-    val originLabel: String,
-    val destinationLabel: String,
-    val departureTimeLabel: String,
-    val isStale: Boolean,
-)
-
-// Mock data for now — Room (android#4) and the create-trip flow will replace
-// this. UI only, matches the approved mockup.
-private val mockPlannedTrips = listOf(
-    PlannedTrip(
-        id = "1",
-        originLabel = "Casa",
-        destinationLabel = "Aeropuerto",
-        departureTimeLabel = "18:30",
-        isStale = false,
-    ),
-    PlannedTrip(
-        id = "2",
-        originLabel = "Oficina",
-        destinationLabel = "Casa",
-        departureTimeLabel = "09:00",
-        isStale = true,
-    ),
-)
+import com.techvibedev.triptrace.data.model.TripResponse
+import com.techvibedev.triptrace.data.repository.TripRepository
+import kotlinx.coroutines.launch
+import java.time.OffsetDateTime
+import java.time.format.DateTimeFormatter
 
 @Composable
-fun TripsScreen(onStartTrip: (String) -> Unit) {
-    if (mockPlannedTrips.isEmpty()) {
-        Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
-            Text(
-                text = "No tenes viajes planeados todavia.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        return
+fun TripsScreen(tripRepository: TripRepository, onStartTrip: (String) -> Unit) {
+    var trips by remember { mutableStateOf<List<TripResponse>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+
+    suspend fun loadTrips() {
+        isLoading = true
+        val result = tripRepository.getPlannedTrips()
+        isLoading = false
+        result.fold(
+            onSuccess = {
+                trips = it
+                errorMessage = null
+            },
+            onFailure = { errorMessage = "No se pudieron cargar los viajes." },
+        )
     }
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        items(mockPlannedTrips) { trip ->
-            PlannedTripCard(trip = trip, onStartTrip = onStartTrip)
+    LaunchedEffect(Unit) { loadTrips() }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        when {
+            isLoading -> {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            }
+            errorMessage != null -> {
+                Text(
+                    text = errorMessage ?: "",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(24.dp),
+                )
+            }
+            trips.isEmpty() -> {
+                Text(
+                    text = "No tenes viajes planeados todavia.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(24.dp),
+                )
+            }
+            else -> {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    items(trips) { trip ->
+                        PlannedTripCard(
+                            trip = trip,
+                            onStartTrip = { tripId ->
+                                scope.launch {
+                                    val result = tripRepository.startTrip(tripId)
+                                    result.fold(
+                                        onSuccess = { onStartTrip(tripId) },
+                                        onFailure = { errorMessage = "No se pudo iniciar el viaje." },
+                                    )
+                                }
+                            },
+                        )
+                    }
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun PlannedTripCard(trip: PlannedTrip, onStartTrip: (String) -> Unit) {
+private fun PlannedTripCard(trip: TripResponse, onStartTrip: (String) -> Unit) {
+    val isStale = isDepartureStale(trip.plannedDepartureAt)
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
-                text = "${trip.originLabel} \u2192 ${trip.destinationLabel}",
+                text = "${trip.originName} \u2192 ${trip.destinationName}",
                 style = MaterialTheme.typography.titleMedium,
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            if (trip.isStale) {
+            if (isStale) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = Icons.Filled.Warning,
@@ -102,7 +139,7 @@ private fun PlannedTripCard(trip: PlannedTrip, onStartTrip: (String) -> Unit) {
                     )
                     Spacer(modifier = Modifier.size(6.dp))
                     Text(
-                        text = "Hora planeada (${trip.departureTimeLabel}) ya paso",
+                        text = "Hora planeada (${formatTime(trip.plannedDepartureAt)}) ya paso",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.secondary,
                     )
@@ -115,7 +152,7 @@ private fun PlannedTripCard(trip: PlannedTrip, onStartTrip: (String) -> Unit) {
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     OutlinedButton(
-                        onClick = { /* TODO: update departure time to now */ },
+                        onClick = { /* TODO: update planned_departure_at to now */ },
                         modifier = Modifier.weight(1f),
                     ) {
                         Text("Usar hora actual")
@@ -140,7 +177,7 @@ private fun PlannedTripCard(trip: PlannedTrip, onStartTrip: (String) -> Unit) {
                         modifier = Modifier.size(16.dp),
                     )
                     Text(
-                        text = "Sale ${trip.departureTimeLabel}",
+                        text = "Sale ${formatTime(trip.plannedDepartureAt)}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.weight(1f),
@@ -151,5 +188,23 @@ private fun PlannedTripCard(trip: PlannedTrip, onStartTrip: (String) -> Unit) {
                 }
             }
         }
+    }
+}
+
+private fun isDepartureStale(plannedDepartureAt: String?): Boolean {
+    if (plannedDepartureAt == null) return false
+    return try {
+        OffsetDateTime.parse(plannedDepartureAt).isBefore(OffsetDateTime.now())
+    } catch (e: Exception) {
+        false
+    }
+}
+
+private fun formatTime(isoDateTime: String?): String {
+    if (isoDateTime == null) return "--:--"
+    return try {
+        OffsetDateTime.parse(isoDateTime).format(DateTimeFormatter.ofPattern("HH:mm"))
+    } catch (e: Exception) {
+        "--:--"
     }
 }

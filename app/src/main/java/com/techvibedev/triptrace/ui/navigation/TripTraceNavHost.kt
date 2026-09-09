@@ -23,6 +23,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.techvibedev.triptrace.data.network.RetrofitClient
 import com.techvibedev.triptrace.data.repository.AuthRepository
+import com.techvibedev.triptrace.data.repository.TripRepository
 import com.techvibedev.triptrace.data.session.TokenDataStore
 import com.techvibedev.triptrace.ui.components.TripTraceBottomNavBar
 import com.techvibedev.triptrace.ui.screens.activetrip.ActiveTripScreen
@@ -36,9 +37,9 @@ private val routesWithBottomBar = setOf(Routes.TRIPS, Routes.HISTORY)
 @Composable
 fun TripTraceNavHost(navController: NavHostController = rememberNavController()) {
     val context = LocalContext.current
-    val authRepository = remember {
-        AuthRepository(RetrofitClient.authApiService, TokenDataStore(context.applicationContext))
-    }
+    val tokenDataStore = remember { TokenDataStore(context.applicationContext) }
+    val authRepository = remember { AuthRepository(RetrofitClient.authApiService, tokenDataStore) }
+    val tripRepository = remember { TripRepository(RetrofitClient.tripApiService, tokenDataStore) }
     // null while DataStore hasn't emitted yet (checking for a saved session).
     val isLoggedIn by authRepository.isLoggedIn.collectAsState(initial = null)
 
@@ -80,11 +81,6 @@ fun TripTraceNavHost(navController: NavHostController = rememberNavController())
             return@Scaffold
         }
 
-        // isLoggedIn is resolved (true/false) by the time NavHost is first
-        // composed, so the start destination is decided correctly up front
-        // instead of composing at Login and reacting afterwards — that
-        // reactive approach raced with NavHost's own initialization and
-        // never actually redirected a returning, already-logged-in user.
         NavHost(
             navController = navController,
             startDestination = if (isLoggedIn == true) Routes.TRIPS else Routes.LOGIN,
@@ -102,6 +98,7 @@ fun TripTraceNavHost(navController: NavHostController = rememberNavController())
             }
             composable(Routes.TRIPS) {
                 TripsScreen(
+                    tripRepository = tripRepository,
                     onStartTrip = { tripId ->
                         navController.navigate("${Routes.ACTIVE_TRIP}/$tripId")
                     },
@@ -111,7 +108,19 @@ fun TripTraceNavHost(navController: NavHostController = rememberNavController())
                 HistoryScreen()
             }
             composable(Routes.CREATE_TRIP) {
-                CreateTripScreen()
+                CreateTripScreen(
+                    tripRepository = tripRepository,
+                    onTripSaved = {
+                        navController.navigate(Routes.TRIPS) {
+                            popUpTo(Routes.TRIPS) { inclusive = true }
+                        }
+                    },
+                    onTripStarted = { tripId ->
+                        navController.navigate("${Routes.ACTIVE_TRIP}/$tripId") {
+                            popUpTo(Routes.TRIPS)
+                        }
+                    },
+                )
             }
             composable("${Routes.ACTIVE_TRIP}/{tripId}") { backStackEntry ->
                 val tripId = backStackEntry.arguments?.getString("tripId") ?: ""
