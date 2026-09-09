@@ -15,12 +15,14 @@ object RetrofitClient {
         .addInterceptor(loggingInterceptor)
         .build()
 
-    val authApiService: AuthApiService by lazy {
+    private val retrofit: Retrofit by lazy {
         Retrofit.Builder()
             .baseUrl(ApiConfig.BASE_URL)
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
-            .create(AuthApiService::class.java)
     }
+
+    val authApiService: AuthApiService by lazy { retrofit.create(AuthApiService::class.java) }
+    val tripApiService: TripApiService by lazy { retrofit.create(TripApiService::class.java) }
 }
