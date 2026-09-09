@@ -7,6 +7,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+- Connected Create trip and Trips screens to the real API (create, list planned, start). Origin/destination use placeholder coordinates until real GPS + geocoding are wired up (#23). ([#24](https://github.com/TechVibe-Dev/trip-trace-android-app/pull/24))
 - Backport workflow now pushes a dedicated branch instead of using `main` directly as the PR head, so deleting the branch after merge can't delete `main`. ([#22](https://github.com/TechVibe-Dev/trip-trace-android-app/pull/22))
 - Login working end-to-end against the real API: Retrofit networking, DataStore-backed session, session-aware start destination, partial email/password autofill (keyboardType only — full ContentType support needs a Compose BOM upgrade, #21). ([#20](https://github.com/TechVibe-Dev/trip-trace-android-app/pull/20))
 - Implemented the Create trip screen. ([#15](https://github.com/TechVibe-Dev/trip-trace-android-app/pull/15))
